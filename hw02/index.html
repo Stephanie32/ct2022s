@@ -153,6 +153,80 @@
 			console.log('start create_font_svg()...');
 
             /** Your code goes here */
+			if(openTypeFont !== null){
+                d3.select('#svg_image')
+                    .html('')
+                ;
+                d3.select('#svg_text')
+                    .html('')
+                ;
+                var str = String.fromCodePoint(code_point);
+                var font = openTypeFont;
+                var glyph = font.stringToGlyphs(str)[0];
+                var mkPath = function(commands, height){
+                    var p = new MyPath();
+                    var c = [];
+                    for (let i = 0; i < commands.length; i += 1) {
+                        const cmd = commands[i];
+                        if (cmd.type === 'M') {
+                            p.moveTo(cmd.x, height-cmd.y);
+                            c.push([cmd.x, height-cmd.y]);
+                        } else if (cmd.type === 'L') {
+                            p.lineTo(cmd.x, height-cmd.y);
+                            c.push([cmd.x, height-cmd.y]);
+                        } else if (cmd.type === 'Q') {
+                            p.quadraticCurveTo(cmd.x1, height-cmd.y1, cmd.x, height-cmd.y);
+                            c.push([cmd.x1, height-cmd.y1]);
+                            c.push([cmd.x, height-cmd.y]);
+                        } else if (cmd.type === 'C') {
+                            p.curveTo(cmd.x1, height-cmd.y1,cmd.x2,height-cmd.y2,cmd.x, height-cmd.y);
+                            c.push([cmd.x1, height-cmd.y1]);
+                            c.push([cmd.x2,height-cmd.y2]);
+                            c.push([cmd.x, height-cmd.y]);
+                        } else if (cmd.type === 'Z') {
+                            p.closePath();
+                        }
+                    }
+                    return [ p, c ];
+                };
+                var svgPathObj = mkPath(glyph.path.commands, font.unitsPerEm);
+                var tmpPath = svgPathObj[0];
+                var svg3 = d3.select('#svg_image')
+                                .append('svg')
+                                .attr("xmlns", 'http://www.w3.org/2000/svg')
+                                .attr("xmlns:svg", 'http://www.w3.org/2000/svg')
+                                .attr("xmlns:xlink", 'http://www.w3.org/1999/xlink')
+                                .attr('viewBox', [0, -glyph.yMin, font.unitsPerEm, font.unitsPerEm].join(' '))
+                ;
+				
+                svg3.append('path')
+                    .attr('d', tmpPath.toPathData())
+                    .attr('class', 'font-svg')
+                ;
+
+				// add points
+				let p_switch = document.querySelector("#point-switch")
+				if(p_switch.checked == false){
+					//代表 Hide Points == false
+					svg3.append('g')
+                    	.attr('id', 'point-graph')
+                	;
+					for(i = 0; i < svgPathObj[1].length; i++){
+						d3.select('#point-graph')
+							.append('circle')
+							.attr('cx', svgPathObj[1][i][0])
+							.attr('cy', svgPathObj[1][i][1])
+							.attr('stroke', "black")
+							.attr('fill', "red")
+							.attr('r', "30")
+						;
+					}
+				}
+				d3.select('#svg_text')
+                    .html(svg3.node().outerHTML)
+                ;
+				svgHTML = svg3.node().outerHTML;
+            }
 			
 			console.log('end create_font_svg()...');
 		};
@@ -236,7 +310,7 @@
 						.attr("fill", "orange")
 					;
 						
-							create_font_svg();
+					create_font_svg();
 				})
 				.on("mouseover", function(event){
 					var coords = d3.mouse(this);
@@ -395,18 +469,48 @@
 				build_plane_selection();
 				build_plane();
 
-
 				/** autoload font data */
 				/** Your code goes here */
+				d3.request('./SourceHanSerif-Heavy.ttf')
+                    .responseType('arraybuffer')
+                    .get(function(d){
+                        openTypeFont = opentype.parse(d.response);
+                    })
+                ;
                 /***/
 
 
 				/** font selection */
 				/** Your code goes here */
+				d3.select('#select-font')
+                    .on('change', function(){
+						console.log("file: ", this.files);
+                        if(this.files[0].name.split('.').slice(-1)[0] != 'ttf'){
+                            return console.error('Not a valid ttf file');
+                        }
+                        var fr = new FileReader();
+                        fr.onload = function(){
+							console.log('fr.result: ', fr.result);
+                            openTypeFont = opentype.parse(fr.result);
+                            console.log(openTypeFont);
+                        };
+                        fr.readAsArrayBuffer(this.files[0]);
+						
+                    })
+                ;
                 /***/
 
 				/** download svg text */
 				/** Your code goes here */
+				d3.select('#download-svg')
+                    .on('click', function(){
+                        var a = d3.create('a')
+                                    .attr('href', URL.createObjectURL(new Blob([svgHTML], {type: 'text/plain'})))
+                                    .attr('download', 'output.svg')
+                        ;
+                        a.node().click();
+                    })
+                ;
                 /***/
 			})
 		;
@@ -422,9 +526,9 @@
 			//第3個參數為 完成狀況，有完成 true/未完成 false
 			//有幾個項目就呼叫幾個 addChild
 			//addChild 要比 renderModal 先呼叫
-			so.addChild("字型檔手動讀取", 6, false);
-			so.addChild("字型檔自動讀取", 2, false);
-			so.addChild("字型描點", 2, false);
+			so.addChild("字型檔手動讀取", 6, true);
+			so.addChild("字型檔自動讀取", 2, true);
+			so.addChild("字型描點", 2, true);
 
 			//產生自評表，參數如下所示
 			so.renderModal(
