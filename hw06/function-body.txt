@@ -1,0 +1,22 @@
+function morph(commands, unicode, defaultUPM){
+    //Function name must be "morph"
+    var max1 = 50;
+    var min1 = 40;
+    var a = 1;
+
+    for(var i=0;i<commands.length;i++){
+	if(commands[i].code == 'Q'){
+	    var randomInt1 = Math.random() * (max1 - min1) + min1;
+	    var r = Math.random();
+	    if(r < 0.5){ a = 1; }
+	    else{ a = -1; }
+		
+	    commands[i].x1 += a * randomInt1;
+	    //commands[i].y1 += randomInt1;
+	}
+
+        //console.log(commands[i]);
+    }
+    //You Must return an array, first element is path commands, second element is upm(optimal)
+    return [ commands ] ;
+};
